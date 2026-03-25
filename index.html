@@ -3,66 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart-Storage NFC</title>
+    <title>Smart-Storage Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .nfc-pulse { animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
+        .nfc-glow { animation: glow 1.5s infinite alternate; }
+        @keyframes glow {
+            from { box-shadow: 0 0 5px #6366f1; }
+            to { box-shadow: 0 0 20px #6366f1; }
         }
+        .map-highlight { fill: #fbbf24 !important; transition: all 0.3s; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans">
+<body class="bg-gray-900 text-gray-100 min-h-screen">
 
-    <header class="bg-indigo-600 text-white p-6 shadow-lg text-center">
-        <h1 class="text-2xl font-black italic tracking-tighter">SMART-STORAGE NFC</h1>
-        <p class="text-indigo-100 text-sm">Le GPS de tes objets</p>
-    </header>
+    <nav class="bg-gray-800 border-b border-gray-700 p-4 sticky top-0 z-50 shadow-2xl">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-black text-indigo-400 tracking-tighter uppercase">Nexus Stock</h1>
+            <div class="flex gap-4">
+                <button onclick="exportData()" class="text-gray-400 hover:text-white"><i class="fas fa-download"></i></button>
+                <button onclick="clearAll()" class="text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </nav>
 
-    <main class="p-4 max-w-md mx-auto">
+    <main class="p-4 max-w-md mx-auto space-y-6">
         
-        <div id="scan-zone" class="bg-white rounded-3xl p-8 shadow-xl border-2 border-dashed border-indigo-200 text-center mb-6">
-            <div id="scan-icon" class="text-6xl mb-4">📱</div>
-            <h2 id="scan-instruction" class="text-xl font-bold text-gray-800">Prêt à ranger ?</h2>
-            <p id="scan-step" class="text-gray-500 mb-6">Appuie sur le bouton pour scanner un objet</p>
-            
-            <button id="btn-scan" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all active:scale-95 w-full">
-                SCANNER UN OBJET
-            </button>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-gray-800 p-4 rounded-2xl border border-gray-700">
+                <p class="text-gray-400 text-xs uppercase font-bold">Objets</p>
+                <p id="stat-count" class="text-2xl font-black">0</p>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-2xl border border-gray-700 text-indigo-400">
+                <p class="text-gray-400 text-xs uppercase font-bold">Zones</p>
+                <p class="text-2xl font-black">2</p>
+            </div>
         </div>
 
-        <div class="bg-white rounded-3xl p-4 shadow-md mb-6">
-            <h3 class="text-gray-400 text-xs font-bold uppercase mb-3">Plan de la maison</h3>
-            <svg viewBox="0 0 200 120" class="w-full rounded-xl border border-gray-100">
-                <rect id="zone-A" x="10" y="10" width="80" height="100" fill="#E0E7FF" stroke="#818CF8" stroke-width="2" />
-                <text x="25" y="65" font-size="8" fill="#4338CA" font-weight="bold">CHAMBRE (A)</text>
-                <rect id="zone-B" x="110" y="10" width="80" height="100" fill="#DCFCE7" stroke="#4ADE80" stroke-width="2" />
-                <text x="125" y="65" font-size="8" fill="#15803D" font-weight="bold">CUISINE (B)</text>
+        <div id="scan-container" class="bg-gray-800 rounded-3xl p-6 border border-indigo-500/30 relative overflow-hidden">
+            <div id="scanner-bg" class="absolute inset-0 bg-indigo-500/5 opacity-0 transition-opacity"></div>
+            
+            <div class="relative z-10 text-center">
+                <div id="status-icon" class="text-5xl mb-3 text-indigo-400"><i class="fas fa-compact-disc fa-spin"></i></div>
+                <h2 id="status-title" class="text-lg font-bold">Prêt pour un nouveau scan</h2>
+                <p id="status-desc" class="text-sm text-gray-400 mb-6">Enregistrez ou recherchez un objet</p>
+                
+                <button id="btn-main-action" onclick="startNfcSession()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-4 rounded-2xl font-bold shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-3">
+                    <i class="fas fa-wifi fa-rotate-90"></i> ACTIVER LE SCANNER
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-3xl p-6 border border-gray-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Plan Interactif</h3>
+                <span class="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded">LIVE</span>
+            </div>
+            <svg viewBox="0 0 200 120" class="w-full drop-shadow-2xl">
+                <g id="map-zones">
+                    <rect id="zone-A" x="10" y="10" width="85" height="100" rx="8" fill="#1e1b4b" stroke="#4338ca" stroke-width="2" />
+                    <text x="25" y="65" font-size="7" fill="#818cf8" font-family="sans-serif" font-weight="bold">CHAMBRE (A)</text>
+                    
+                    <rect id="zone-B" x="105" y="10" width="85" height="100" rx="8" fill="#064e3b" stroke="#059669" stroke-width="2" />
+                    <text x="125" y="65" font-size="7" fill="#34d399" font-family="sans-serif" font-weight="bold">CUISINE (B)</text>
+                </g>
             </svg>
         </div>
 
-        <div id="inventory-list" class="space-y-4">
-            <h3 class="text-gray-400 text-xs font-bold uppercase">Derniers rangements</h3>
+        <input type="text" id="search-input" onkeyup="filterItems()" placeholder="Chercher un objet..." class="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 text-sm focus:outline-none focus:border-indigo-500 transition">
+
+        <div id="item-list" class="space-y-3 pb-20">
             </div>
     </main>
 
     <script>
-        let step = 'IDLE'; // IDLE, SCAN_OBJECT, SCAN_LOCATION
-        let currentObject = null;
+        let db = JSON.parse(localStorage.getItem('nexus_stock')) || [];
+        let sessionMode = 'IDLE'; // IDLE, SCAN_ITEM, SCAN_LOC
+        let tempItem = null;
 
-        const btnScan = document.getElementById('btn-scan');
-        const instruction = document.getElementById('scan-instruction');
-        const stepText = document.getElementById('scan-step');
-        const inventoryList = document.getElementById('inventory-list');
+        const mainBtn = document.getElementById('btn-main-action');
+        const statusTitle = document.getElementById('status-title');
+        const statusDesc = document.getElementById('status-desc');
 
-        // Simuler une base de données locale
-        let db = JSON.parse(localStorage.getItem('smartStorage')) || [];
-
-        btnScan.addEventListener('click', async () => {
+        async function startNfcSession() {
             if (!('NDEFReader' in window)) {
-                alert("Le NFC n'est pas supporté par ce navigateur (essaie Chrome sur Android).");
+                alert("NFC non supporté. Utilisez Chrome sur Android.");
                 return;
             }
 
@@ -70,93 +95,117 @@
                 const ndef = new NDEFReader();
                 await ndef.scan();
                 
-                // On passe en mode attente de scan
-                btnScan.disabled = true;
-                btnScan.innerText = "APPROCHE LE BADGE...";
-                btnScan.classList.add('nfc-pulse');
+                updateUI('WAITING');
 
-                ndef.onreading = event => {
-                    const id = event.serialNumber;
-                    handleNFC(id);
+                ndef.onreading = (event) => {
+                    const serial = event.serialNumber;
+                    handleNfcLogic(serial);
                 };
-
             } catch (error) {
-                console.log(error);
-                alert("Erreur : " + error);
+                alert("Erreur NFC : " + error);
             }
-        });
+        }
 
-        function handleNFC(id) {
-            if (step === 'IDLE') {
-                // Étape 1 : On scanne l'objet
-                currentObject = prompt("Nom de l'objet scanné ?", "Câble USB");
-                if(!currentObject) return resetUI();
+        function handleNfcLogic(serial) {
+            // Est-ce un objet déjà connu ?
+            const existingItem = db.find(i => i.itemSerial === serial);
+
+            if (existingItem && sessionMode === 'IDLE') {
+                // RECHERCHE : On a scanné un objet connu
+                highlightZone(existingItem.zone);
+                alert(`L'objet "${existingItem.name}" est rangé dans : ${existingItem.location}`);
+                resetSession();
+            } 
+            else if (sessionMode === 'IDLE') {
+                // ENREGISTREMENT : Nouvel objet
+                const name = prompt("Nouvel objet détecté ! Nom ?");
+                if(!name) return resetSession();
                 
-                step = 'SCAN_LOCATION';
-                instruction.innerText = "Génial ! Maintenant...";
-                stepText.innerText = `Où ranges-tu ton "${currentObject}" ? Scanne le badge du tiroir !`;
-                btnScan.innerText = "SCANNE LE TIROIR";
-                btnScan.classList.replace('bg-indigo-600', 'bg-green-500');
-                
-            } else if (step === 'SCAN_LOCATION') {
-                // Étape 2 : On scanne le lieu (ex: A3, B2)
-                let location = prompt("Nom de l'emplacement ?", "Tiroir A3");
-                
-                // Enregistrement
-                const newItem = {
-                    id: Date.now(),
-                    name: currentObject,
-                    loc: location,
-                    zone: location.startsWith('A') ? 'A' : 'B'
+                tempItem = { 
+                    itemSerial: serial, 
+                    name: name,
+                    date: new Date().toLocaleDateString('fr-FR')
                 };
                 
-                db.unshift(newItem);
-                localStorage.setItem('smartStorage', JSON.stringify(db));
+                sessionMode = 'SCAN_LOC';
+                updateUI('STEP_2');
+            } 
+            else if (sessionMode === 'SCAN_LOC') {
+                // ASSIGNATION : On scanne le badge du tiroir
+                const locName = prompt("Nom de l'emplacement (ex: A3, B1) ?", "A1");
+                if(!locName) return resetSession();
+
+                tempItem.location = locName;
+                tempItem.zone = locName.toUpperCase().startsWith('A') ? 'A' : 'B';
                 
-                renderList();
-                highlightMap(newItem.zone);
-                resetUI();
+                db.unshift(tempItem);
+                save();
+                resetSession();
+                render();
             }
         }
 
-        function resetUI() {
-            step = 'IDLE';
-            currentObject = null;
-            btnScan.disabled = false;
-            btnScan.innerText = "SCANNER UN OBJET";
-            btnScan.classList.remove('nfc-pulse');
-            btnScan.classList.replace('bg-green-500', 'bg-indigo-600');
-            instruction.innerText = "Prêt à ranger ?";
-            stepText.innerText = "Appuie sur le bouton pour scanner un objet";
-        }
-
-        function highlightMap(zoneId) {
-            const rect = document.getElementById(`zone-${zoneId}`);
-            if(rect) {
-                rect.setAttribute('fill', '#FDE047'); // Clignote en jaune
-                setTimeout(() => {
-                    rect.setAttribute('fill', zoneId === 'A' ? '#E0E7FF' : '#DCFCE7');
-                }, 2000);
+        function updateUI(state) {
+            if(state === 'WAITING') {
+                mainBtn.innerText = "APPROCHEZ LE BADGE...";
+                mainBtn.classList.add('nfc-glow');
+                document.getElementById('scanner-bg').style.opacity = "1";
+            }
+            if(state === 'STEP_2') {
+                statusTitle.innerText = "Objet enregistré !";
+                statusDesc.innerText = "Maintenant, scannez le badge du TIROIR.";
+                mainBtn.innerText = "SCANNEZ LE LIEU";
+                mainBtn.classList.replace('bg-indigo-600', 'bg-emerald-600');
             }
         }
 
-        function renderList() {
-            inventoryList.innerHTML = '<h3 class="text-gray-400 text-xs font-bold uppercase">Derniers rangements</h3>';
+        function resetSession() {
+            sessionMode = 'IDLE';
+            tempItem = null;
+            mainBtn.innerText = "ACTIVER LE SCANNER";
+            mainBtn.classList.remove('nfc-glow', 'bg-emerald-600');
+            mainBtn.classList.add('bg-indigo-600');
+            statusTitle.innerText = "Prêt pour un nouveau scan";
+            statusDesc.innerText = "Enregistrez ou recherchez un objet";
+            document.getElementById('scanner-bg').style.opacity = "0";
+        }
+
+        function highlightZone(zoneId) {
+            const el = document.getElementById(`zone-${zoneId}`);
+            el.classList.add('map-highlight');
+            setTimeout(() => el.classList.remove('map-highlight'), 3000);
+        }
+
+        function render() {
+            const list = document.getElementById('item-list');
+            const count = document.getElementById('stat-count');
+            list.innerHTML = "";
+            count.innerText = db.length;
+
             db.forEach(item => {
-                const card = `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 ${item.zone === 'A' ? 'border-indigo-500' : 'border-green-500'} flex justify-between items-center">
+                const zoneColor = item.zone === 'A' ? 'border-indigo-500' : 'border-emerald-500';
+                const icon = item.zone === 'A' ? 'fa-bed' : 'fa-utensils';
+                
+                list.innerHTML += `
+                    <div class="bg-gray-800 border-l-4 ${zoneColor} p-4 rounded-xl flex justify-between items-center shadow-lg transition transform active:scale-95">
                         <div>
-                            <p class="text-xs text-gray-400 font-bold">${item.loc}</p>
-                            <h4 class="font-bold text-gray-800">${item.name}</h4>
+                            <h4 class="font-bold text-white">${item.name}</h4>
+                            <p class="text-xs text-gray-500 uppercase font-mono tracking-tighter">
+                                <i class="fas fa-map-marker-alt mr-1"></i> ${item.location} • ${item.date}
+                            </p>
                         </div>
-                        <span class="text-2xl">${item.zone === 'A' ? '🛏️' : '🍳'}</span>
+                        <div class="text-xl text-gray-600">
+                            <i class="fas ${icon}"></i>
+                        </div>
                     </div>
                 `;
-                inventoryList.innerHTML += card;
             });
         }
 
-        renderList();
+        function save() { localStorage.setItem('nexus_stock', JSON.stringify(db)); }
+        function clearAll() { if(confirm("Tout effacer ?")) { db = []; save(); render(); } }
+        
+        render();
     </script>
 </body>
 </html>
